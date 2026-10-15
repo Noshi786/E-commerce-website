@@ -1,13 +1,12 @@
 {
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index?__path=$1"
+      "source": "/api/:path*",
+      "destination": "https://noshi-curatedvercelapp.vercel.app/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
