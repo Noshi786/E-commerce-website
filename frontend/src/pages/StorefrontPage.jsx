@@ -556,7 +556,7 @@ function App() {
         {error && !authOpen && !cartOpen && !checkoutOpen && (
           <div className="store-alert" role="alert">{error}<button onClick={() => setError('')} type="button" aria-label="Dismiss error">×</button></div>
         )}
-        {notice && <div className="store-notice" role="status">{notice}<button onClick={() => setNotice('')} type="button" aria-label="Dismiss message">×</button></div>}
+        {notice && <div className="store-notice store-toast" role="status">{notice}<button onClick={() => setNotice('')} type="button" aria-label="Dismiss message">×</button></div>}
 
         {loadingProducts && products.length === 0 ? (
           <div className="store-loader" aria-live="polite" aria-busy="true">
@@ -631,7 +631,7 @@ function App() {
         )}
         {!loadingProducts && productTotal > 0 && <div className="pagination-bar">
           <span>Showing {Math.min(productTotal, (page - 1) * 12 + 1)}–{Math.min(productTotal, page * 12)} of {productTotal}</span>
-          <div><button disabled={page <= 1} onClick={() => setPage((current) => current - 1)} type="button">← Previous</button><span>Page {page} of {productPages}</span><button disabled={page >= productPages} onClick={() => setPage((current) => current + 1)} type="button">Next →</button></div>
+          <div><button disabled={page <= 1} onClick={() => { setPage((current) => current - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }} type="button">← Previous</button><span>Page {page} of {productPages}</span><button disabled={page >= productPages} onClick={() => { setPage((current) => current + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }} type="button">Next →</button></div>
         </div>}
       </section>
 

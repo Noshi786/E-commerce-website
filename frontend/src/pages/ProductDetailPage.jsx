@@ -45,6 +45,7 @@ function ProductDetailPage() {
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [cartBusy, setCartBusy] = useState(false)
+  const [bagCount, setBagCount] = useState(() => readGuestCart().reduce((count, item) => count + (item.quantity || 1), 0))
 
   useEffect(() => {
     let active = true
@@ -112,6 +113,7 @@ function ProductDetailPage() {
         })
         localStorage.setItem('noshin-guest-cart', JSON.stringify(cart))
       }
+      setBagCount((count) => count + 1)
       setNotice('Added to your bag. Your cart is ready on the shop page.')
     } catch (requestError) {
       setError(requestError.message)
@@ -160,12 +162,17 @@ function ProductDetailPage() {
 
   return (
     <main className="min-h-screen bg-[#fffaf8] text-[#2d3934]">
+      {notice && <div className="store-notice store-toast" role="status">{notice}<button onClick={() => setNotice('')} type="button" aria-label="Dismiss message">×</button></div>}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[#f1e5df] bg-[#fffdfd]/95 px-5 py-4 backdrop-blur sm:px-10">
         <a className="font-serif text-2xl font-semibold tracking-tight text-[#233d36] no-underline" href="/">noshin<span className="text-[#b96e7d]">.</span></a>
         <nav className="flex items-center gap-3 text-xs sm:gap-6">
           <a className="text-[#536a63] no-underline transition hover:text-[#9d5a64]" href="/">Shop</a>
           <a className="text-[#536a63] no-underline transition hover:text-[#9d5a64]" href="/wishlist">Wishlist</a>
           <a className="rounded-full bg-[#2d4d45] px-4 py-2 text-white no-underline shadow-[0_12px_25px_rgba(45,77,69,0.15)] transition hover:bg-[#1d3933]" href="/">Back to collection</a>
+          <a className="relative grid h-9 w-9 place-items-center rounded-full bg-[#b96e7d] text-white no-underline shadow-[0_10px_22px_rgba(142,78,101,0.28)] transition hover:bg-[#a05a74]" href="/" aria-label={`Bag, ${bagCount} items`} title="Your bag">
+            <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 7h11l-.9 9.2a1.8 1.8 0 0 1-1.8 1.6H7.2a1.8 1.8 0 0 1-1.8-1.6L4.5 7Z" /><path d="M7 7V6a3 3 0 0 1 6 0v1" /></svg>
+            {bagCount > 0 && <b className="absolute -right-1 -top-1 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#d7f26d] px-1 text-[9px] font-bold text-[#233d36]" key={bagCount}>{bagCount}</b>}
+          </a>
         </nav>
       </header>
       <div className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-14">

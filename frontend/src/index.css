@@ -1,5 +1,5 @@
 ﻿@import "tailwindcss";
-@theme {
+:root {
   --font-sans: 'DM Sans', sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
 }
@@ -1533,13 +1533,23 @@ textarea:focus-visible {
 }
 
 .remove-item {
-  align-self: start;
-  padding: 2px 0;
-  border: 0;
-  color: #9da29c;
-  background: none;
+  align-self: flex-end;
+  padding: 6px 12px;
+  border: 1px solid #ecd3da;
+  border-radius: 9px;
+  color: #97546b;
+  background: #fff5f8;
   font-size: 9px;
-  text-decoration: underline;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.remove-item:hover {
+  border-color: #c9859a;
+  color: #fff;
+  background: linear-gradient(135deg, #c9859a 0%, #a95f78 100%);
 }
 
 .cart-summary,
@@ -2749,6 +2759,30 @@ input[type="radio"] {
   background:
     radial-gradient(ellipse at 100% 0%, rgb(233 206 221 / 72%), transparent 42%),
     linear-gradient(120deg, #fffafb 0%, #f5e9f0 56%, #f4e9e6 100%);
+}
+
+.store-toast {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 70;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 40px));
+  margin: 0;
+  justify-content: center;
+  animation: notice-arrive 380ms cubic-bezier(0.2, 0.8, 0.25, 1) both, toast-settle 260ms 2.6s ease both;
+}
+
+.store-toast::before {
+  content: '✓';
+  color: #2f6b4f;
+  background: #e3f4ea;
+  border-color: rgb(47 107 79 / 22%);
+}
+
+@keyframes toast-settle {
+  to { opacity: 0; pointer-events: none; translate: -50% -8px; }
 }
 
 .store-alert::before,
@@ -4055,11 +4089,19 @@ body { font-family: var(--font-sans); }
 .rv.in-view { opacity: 1; translate: 0 0; }
 
 /* Header */
-.store-header { transition: min-height .3s var(--ease), background .3s, box-shadow .3s; }
+.store-header { transition: background .3s var(--ease), box-shadow .3s var(--ease); }
+.store-header { z-index: 40; }
 .scrolled .store-header {
-  min-height: 62px; background: rgb(255 255 255 / 78%);
-  backdrop-filter: blur(18px) saturate(1.6); box-shadow: 0 10px 30px rgb(11 43 38 / 8%);
+  min-height: 78px;
+  background: #fff;
+  backdrop-filter: none;
+  box-shadow: 0 10px 30px rgb(87 60 73 / 10%);
 }
+.store-header .store-logo,
+.store-header .store-nav,
+.store-header .header-actions { flex-shrink: 0; min-width: 0; }
+.store-nav a,
+.store-header .icon-btn { white-space: nowrap; }
 .store-nav a::after { background: linear-gradient(90deg, var(--ink), var(--rose-glow)); height: 2px; }
 .bag-button span { background: var(--lime); color: var(--ink); font-weight: 800; transition: transform .3s var(--ease); }
 .bag-button:hover span { transform: scale(1.25) rotate(-8deg); }
@@ -4411,6 +4453,8 @@ main:not(.storefront) :is(input:not([type=checkbox]):not([type=radio]), textarea
 .recent-card:hover { border-color: var(--rose-glow); box-shadow: 0 22px 40px rgb(87 60 73 / 16%), 0 0 0 3px var(--ring); }
 .hero-cta:hover { color: #573c49; background: #fff; box-shadow: 0 14px 30px rgb(142 78 101 / 25%); }
 .quantity-control button:hover { background: #f9e6ec; }
+.pagination-bar button { border-color: #ecd0d9; color: #694653; background: linear-gradient(135deg, #fffafb 0%, #f8e9ed 100%); font-weight: 600; }
+.pagination-bar button:hover:not(:disabled) { border-color: #c9859a; color: #fff; background: linear-gradient(135deg, #c9859a 0%, #a95f78 100%); box-shadow: 0 12px 24px rgb(138 75 98 / 18%); transform: translateY(-2px); }
 
 /* inner pages (orders, wishlist, addresses, product, admin) */
 main:not(.storefront) article:hover, .orders-page .order-card:hover { border-color: var(--rose-glow); box-shadow: 0 26px 48px rgb(87 60 73 / 14%), 0 0 0 3px var(--ring); }
