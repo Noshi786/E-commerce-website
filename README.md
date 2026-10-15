@@ -1,4 +1,4 @@
-# Noshin Store
+# Noshin Curated
 
 A full-stack e-commerce application with a React storefront, an Express API, and MongoDB. The frontend and API can run locally as separate development servers or deploy together as one Vercel project.
 
