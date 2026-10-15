@@ -1,7 +1,4 @@
 {
-  "installCommand": "npm install && npm --prefix frontend install",
-  "buildCommand": "npm --prefix frontend run build",
-  "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
       "maxDuration": 30
@@ -11,10 +8,6 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/index?__path=$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
     }
   ]
 }
