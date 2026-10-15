@@ -11,7 +11,7 @@ export const googleOAuthCallback = (req, res) => {
   }
 
   const frontendUrl = new URL(
-    process.env.FRONTEND_URL || 'http://localhost:5173',
+    process.env.FRONTEND_URL
   );
   frontendUrl.hash = new URLSearchParams({
     token: generateToken(req.user._id),
