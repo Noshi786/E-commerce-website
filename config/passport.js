@@ -15,7 +15,7 @@ if (googleOAuthEnabled) {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL:
           process.env.GOOGLE_CALLBACK_URL ||
-          `${process.env.API_BASE_URL || 'http://localhost:3100'}/api/auth/google/callback`,
+          `${process.env.API_BASE_URL }/api/auth/google/callback`,
       },
       async (accessToken, refreshToken, profile, done) => {
         const email = profile.emails
