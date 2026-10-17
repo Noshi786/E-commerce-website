@@ -85,7 +85,7 @@ Open `http://localhost:5173` in your browser. Vite proxies frontend `/api` reque
 | `JWT_SECRET` | Yes | Long, private secret used to sign authentication tokens. |
 | `PORT` | No | Local API port; defaults to `3100`. |
 | `FRONTEND_URL` | No | Frontend origin used after OAuth; defaults to `http://localhost:5173`. |
-| `API_BASE_URL` | No | Public API origin used to form the default Google callback URL. |
+| `API_BASE_URL` | No | Public API origin used to form the default Google callback URL; defaults to `http://localhost:3100`. |
 | `GOOGLE_CLIENT_ID` | Optional | Google OAuth client ID. Set with the client secret to enable Google sign-in. |
 | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth client secret. |
 | `GOOGLE_CALLBACK_URL` | Optional | Google OAuth callback URL. Defaults to `${API_BASE_URL}/api/auth/google/callback`. |
@@ -148,21 +148,28 @@ npm --prefix frontend run lint
 npm --prefix frontend run build
 ```
 
-## Deploy frontend and API together to Vercel
+## Deploy to Vercel (two projects from this repository)
 
-The root [`vercel.json`](./vercel.json) configures Vercel to build the frontend and route `/api/*` requests to the Express serverless handler in [`api/index.js`](./api/index.js).
+The API and the frontend are deployed as two Vercel projects that both import this repository:
 
-1. Push the project to a GitHub repository. Keep the repository root as the Vercel project root; do not set it to `frontend/`.
-2. In Vercel, create a project by importing the GitHub repository. The build and output settings are provided by `vercel.json`.
-3. Add the production environment variables in Vercel:
+| Project | Root Directory | Config used |
+| --- | --- | --- |
+| API (`noshi-curated-backendvercelapp.vercel.app`) | `./` (repository root) | [`vercel.json`](./vercel.json): every request goes to the Express handler in [`api/index.js`](./api/index.js) |
+| Frontend (`noshi-curatedvercelapp.vercel.app`) | `frontend` | [`frontend/vercel.json`](./frontend/vercel.json): builds Vite, proxies `/api/*` to the API project, serves `index.html` for all other routes |
+
+The API project must never rewrite `/api/*` to another domain, or requests loop between the projects (`508 INFINITE_LOOP_DETECTED`).
+
+1. API project: Root Directory `./`, Framework Preset `Other`. Add the environment variables:
    - `MONGODB_URI`
    - `JWT_SECRET` (generate a new production secret; do not reuse a development value)
-   - `FRONTEND_URL` (the deployed HTTPS site origin)
-   - `API_BASE_URL` (the deployed HTTPS API origin; with a combined deployment this is usually the same origin)
-   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` only if using Google sign-in
-4. In MongoDB Atlas, configure database network access securely so the deployment can connect.
-5. If using Google OAuth, set `GOOGLE_CALLBACK_URL` to `https://YOUR-VERCEL-DOMAIN/api/auth/google/callback` and add that exact URL to the Google OAuth client's authorized redirect URIs. Set `FRONTEND_URL` to `https://YOUR-VERCEL-DOMAIN`.
-6. Deploy. After deployment, test the site, `https://YOUR-VERCEL-DOMAIN/api/health`, sign-up/login, and checkout flows.
+   - `FRONTEND_URL` = `https://noshi-curatedvercelapp.vercel.app`
+   - `API_BASE_URL` = `https://noshi-curated-backendvercelapp.vercel.app`
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` = `https://noshi-curated-backendvercelapp.vercel.app/api/auth/google/callback` if using Google sign-in
+2. Frontend project: Root Directory `frontend`, Framework Preset `Vite`. It needs no environment variables.
+3. In MongoDB Atlas, configure database network access securely so the API can connect.
+4. If using Google OAuth, add the exact `GOOGLE_CALLBACK_URL` to the Google OAuth client's authorized redirect URIs (and `http://localhost:3100/api/auth/google/callback` for local development).
+5. Redeploy both projects. Test `https://noshi-curated-backendvercelapp.vercel.app/api/health`, then the site, sign-up/login, Google sign-in, and checkout.
+6. If the API domain changes, update the rewrite destination in `frontend/vercel.json`.
 7. Create the production administrator once from a trusted environment using the production `MONGODB_URI` and temporary admin variables. Remove those variables when finished.
 
 Checkout and category updates use MongoDB transactions, so the database must support transactions (MongoDB Atlas clusters are replica sets).
@@ -180,5 +187,6 @@ scripts/              Administrative setup scripts
 tests/                Backend unit tests
 frontend/src/         React application and styles
 frontend/tests/       Frontend unit tests
-vercel.json           Combined frontend/API Vercel configuration
+vercel.json           API project Vercel configuration
+frontend/vercel.json  Frontend project Vercel configuration
 ```

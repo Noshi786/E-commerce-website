@@ -7,7 +7,7 @@ export default function handler(req, res) {
   if (forwardedPath !== null) {
     requestUrl.searchParams.delete('__path')
     const query = requestUrl.searchParams.toString()
-    req.url = `/api/${forwardedPath}${query ? `?${query}` : ''}`
+    req.url = `/${forwardedPath}${query ? `?${query}` : ''}`
   }
 
   return app(req, res)
