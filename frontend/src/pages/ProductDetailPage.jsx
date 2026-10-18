@@ -176,7 +176,7 @@ function ProductDetailPage() {
         </nav>
       </header>
       <div className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-14">
-        {error && <p className="mb-5 rounded-2xl border border-[#f0d8d6] bg-[#fff4f4] p-4 text-sm text-[#8c4b4e]" role="alert">{error}</p>}
+        {error && <div className="store-alert store-toast" role="alert">{error}<button onClick={() => setError('')} type="button" aria-label="Dismiss error">×</button></div>}
         {notice && <p className="mb-5 rounded-2xl border border-[#dfeadf] bg-[#f2faf3] p-4 text-sm text-[#3d6a4d]" role="status">{notice}</p>}
         {!product && !error ? <p className="page-loading py-24 text-center text-sm text-[#69756f]">Finding this lovely piece…</p> : null}
         {product && (

@@ -2781,9 +2781,22 @@ input[type="radio"] {
   border-color: rgb(47 107 79 / 22%);
 }
 
+.store-alert.store-toast::before {
+  content: '!';
+  color: #a84d61;
+  background: #fbe8eb;
+  border-color: rgb(183 103 118 / 24%);
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+}
+
 @keyframes toast-settle {
   to { opacity: 0; pointer-events: none; translate: -50% -8px; }
 }
+
+/* Errors stay until dismissed; only success notices auto-hide. */
+.store-alert.store-toast { animation: notice-arrive 380ms cubic-bezier(0.2, 0.8, 0.25, 1) both; }
 
 .store-alert::before,
 .store-notice::before,
@@ -4550,8 +4563,10 @@ main:not(.storefront) > header nav a:hover { background: #f9e6ec; color: var(--r
   animation: storefront-spin 650ms linear infinite;
 }
 
-/* Gravity-inspired entrance runs automatically; it is not a user-controlled mode. */
-.storefront > .store-header,
+/* Keep dialogs above the sticky navbar so the header never shows through. */
+.overlay { z-index: 80; }
+
+/* Gravity-inspired entrance runs automatically; it is not a user-controlled mode. */.storefront > .store-header,
 .storefront .hero-copy > *,
 .storefront .hero-art,
 .storefront .shop-heading,

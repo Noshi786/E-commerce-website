@@ -554,7 +554,7 @@ function App() {
         </div>
 
         {error && !authOpen && !cartOpen && !checkoutOpen && (
-          <div className="store-alert" role="alert">{error}<button onClick={() => setError('')} type="button" aria-label="Dismiss error">×</button></div>
+          <div className="store-alert store-toast" role="alert">{error}<button onClick={() => setError('')} type="button" aria-label="Dismiss error">×</button></div>
         )}
         {notice && <div className="store-notice store-toast" role="status">{notice}<button onClick={() => setNotice('')} type="button" aria-label="Dismiss message">×</button></div>}
 
