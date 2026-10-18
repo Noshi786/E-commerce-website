@@ -4566,6 +4566,26 @@ main:not(.storefront) > header nav a:hover { background: #f9e6ec; color: var(--r
 /* Keep dialogs above the sticky navbar so the header never shows through. */
 .overlay { z-index: 80; }
 
+/* Admin order desk: the open status dropdown must float above sibling order
+   cards instead of being clipped/overlapped by the cards rendered after it. */
+.order-desk-board {
+  position: relative;
+}
+
+.order-desk-board article {
+  position: relative;
+  z-index: 0;
+}
+
+.order-desk-board article:has(.styled-select-trigger[aria-expanded="true"]) {
+  z-index: 20;
+}
+
+.order-desk-board .rounded-xl.bg-slate-50 {
+  position: relative;
+  z-index: auto;
+}
+
 /* Gravity-inspired entrance runs automatically; it is not a user-controlled mode. */.storefront > .store-header,
 .storefront .hero-copy > *,
 .storefront .hero-art,

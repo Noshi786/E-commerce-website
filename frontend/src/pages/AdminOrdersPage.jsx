@@ -106,7 +106,7 @@ function AdminOrdersPage() {
         </div>
         {error && <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800" role="alert">{error}</p>}
         {notice && <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" role="status">{notice}</p>}
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="order-desk-board mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {loading ? <p className="page-loading p-12 text-center text-sm text-slate-500">Loading orders…</p> : orders.length ? <div className="divide-y divide-slate-100">
             {orders.map((order) => <article className="grid gap-4 p-5 lg:grid-cols-[1fr_1.2fr_1.2fr]" key={order._id}>
               <div>
