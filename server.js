@@ -15,11 +15,13 @@ import addressRoutes from './routes/addressRoutes.js';
 import adminUserRoutes from './routes/adminUserRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 dotenv.config();
 
 const app = express();
 
+app.set('trust proxy', process.env.VERCEL ? 1 : false);
 app.use(express.json());
 app.use(cors());
 app.use(passport.initialize());
@@ -51,7 +53,7 @@ app.use('/api/users/me/addresses', addressRoutes);
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/admin/dashboard', adminDashboardRoutes);
-
+app.use('/api/chat', chatRoutes);
 const PORT = Number(process.env.PORT || 3100);
 
 if (!process.env.VERCEL) {

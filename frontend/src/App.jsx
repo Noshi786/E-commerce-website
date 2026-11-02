@@ -7,42 +7,36 @@ import AddressesPage from './pages/AddressesPage.jsx'
 import OrderDetailPage from './pages/OrderDetailPage.jsx'
 import AdminProductsPage from './pages/AdminProductsPage.jsx'
 import AdminOrdersPage from './pages/AdminOrdersPage.jsx'
+import Chatbot from './components/Chatbot.jsx'
 
 function App() {
   const path = window.location.pathname
+  let page = <StorefrontPage />
+
   if (path === '/admin') {
-    return <AdminPage />
+    page = <AdminPage />
+  } else if (path === '/admin/products') {
+    page = <AdminProductsPage />
+  } else if (path === '/admin/orders') {
+    page = <AdminOrdersPage />
+  } else if (path === '/orders') {
+    page = <OrdersPage />
+  } else if (path === '/wishlist') {
+    page = <WishlistPage />
+  } else if (path === '/addresses') {
+    page = <AddressesPage />
+  } else if (/^\/product\/[^/]+$/.test(path)) {
+    page = <ProductDetailPage />
+  } else if (/^\/orders\/[^/]+$/.test(path)) {
+    page = <OrderDetailPage />
   }
 
-  if (path === '/admin/products') {
-    return <AdminProductsPage />
-  }
-
-  if (path === '/admin/orders') {
-    return <AdminOrdersPage />
-  }
-
-  if (path === '/orders') {
-    return <OrdersPage />
-  }
-
-  if (path === '/wishlist') {
-    return <WishlistPage />
-  }
-
-  if (path === '/addresses') {
-    return <AddressesPage />
-  }
-
-  if (/^\/product\/[^/]+$/.test(path)) {
-    return <ProductDetailPage />
-  }
-
-  if (/^\/orders\/[^/]+$/.test(path)) {
-    return <OrderDetailPage />
-  }
-
-  return <StorefrontPage />
+  return (
+    <>
+      {page}
+      <Chatbot />
+    </>
+  )
 }
 
 export default App

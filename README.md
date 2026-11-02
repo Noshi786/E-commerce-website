@@ -9,6 +9,7 @@ A full-stack e-commerce application with a React storefront, an Express API, and
 - Customer accounts with wishlists and saved delivery addresses.
 - Admin dashboard for managing products, categories, customers, and orders.
 - Email/password authentication and optional Google OAuth.
+- Gemini-powered shopping assistant with product-catalog search.
 - Responsive storefront with accessible custom dropdowns and reduced-motion support.
 
 ## Tech stack
@@ -45,7 +46,9 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-Set `MONGODB_URI` to your database connection string and `JWT_SECRET` to a long, random secret. Leave the Google OAuth values empty if you do not need Google sign-in. The `.env` file is for local use only and must never be committed.
+Set `MONGODB_URI` to your database connection string and `JWT_SECRET` to a long, random secret. Add `GEMINI_API_KEY` from Google AI Studio to enable the shopping assistant. Leave the Google OAuth values empty if you do not need Google sign-in. The `.env` file is for local use only and must never be committed.
+
+The chat endpoint uses the existing MongoDB database for its shared sliding-window rate limiter; no separate Redis or Upstash account is required. Chat requests are limited to 5 per 60 seconds per signed-in account or guest IP. The API's MongoDB user must be allowed to create the TTL index on the `chat_rate_limits` collection.
 
 ### 3. Start the backend
 
@@ -89,6 +92,7 @@ Open `http://localhost:5173` in your browser. Vite proxies frontend `/api` reque
 | `GOOGLE_CLIENT_ID` | Optional | Google OAuth client ID. Set with the client secret to enable Google sign-in. |
 | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth client secret. |
 | `GOOGLE_CALLBACK_URL` | Optional | Google OAuth callback URL. Defaults to `${API_BASE_URL}/api/auth/google/callback`. |
+| `GEMINI_API_KEY` | Optional | Server-side Google Gemini API key used by the shopping assistant. |
 
 Do not put real credentials in source files, README examples, screenshots, or Git commits. Set production secrets in the hosting provider's environment-variable settings.
 
@@ -122,6 +126,7 @@ All API routes use the `/api` prefix.
 | `GET /api/health` | API health check. |
 | `/api/products` | Product catalog and product details. |
 | `/api/categories` | Product categories. |
+| `POST /api/chat` | Gemini shopping assistant and catalog search. |
 | `/api/auth` | Registration, login, and optional Google OAuth. |
 | `/api/cart` | Shopping cart. |
 | `/api/orders` | Checkout and customer orders. |

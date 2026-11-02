@@ -1,0 +1,33 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "temperature": 0.3,
+  "maxOutputTokens": 400,
+  "maxMessageLength": 2000,
+  "maxHistoryMessages": 10,
+  "rateLimit": {
+    "requests": 5,
+    "windowSeconds": 60
+  },
+  "systemPrompt": "You are a helpful shopping assistant for Noshin Curated. Help customers find products using the store catalog. Never invent product names, prices, stock, or order details. Use the search_products tool when the customer asks about products. Base product claims only on the tool results. If no matching products are found, say so clearly and ask what they would like to try next.",
+  "tool": {
+    "name": "search_products",
+    "description": "Search the store catalog for products matching the customer query. You may set a maximum price.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Product name, brand, category, or search phrase"
+        },
+        "maxPrice": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional maximum price"
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    }
+  }
+}
