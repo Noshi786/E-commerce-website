@@ -7,6 +7,35 @@ const ajv = new Ajv();
 const validateSearchArgs = ajv.compile(config.tool.parameters);
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const searchableFields = ['title', 'description', 'brand', 'category'];
+const ignoredSearchTerms = new Set([
+  'a',
+  'an',
+  'are',
+  'do',
+  'for',
+  'find',
+  'have',
+  'i',
+  'in',
+  'is',
+  'me',
+  'of',
+  'please',
+  'product',
+  'products',
+  'show',
+  'stock',
+  'the',
+  'to',
+  'we',
+  'what',
+  'which',
+  'with',
+  'you',
+  'available',
+  'availability',
+]);
 
 const toGeminiSchema = (schema) => {
   if (Array.isArray(schema)) {
@@ -27,25 +56,61 @@ const toGeminiSchema = (schema) => {
   );
 };
 
-async function searchProducts(args) {
-  const expression = new RegExp(escapeRegex(args.query.trim()), 'i');
-  const filter = {
-    $or: [
-      { title: expression },
-      { description: expression },
-      { brand: expression },
-      { category: expression },
-    ],
-  };
+export function buildProductSearchFilter(args) {
+  const terms = getSearchTerms(args.query);
+  const conditions = terms.map((term) => ({
+    $or: searchableFields.map((field) => ({
+      [field]: new RegExp(escapeRegex(term), 'i'),
+    })),
+  }));
+
+  if (args.inStockOnly) conditions.push({ stock: { $gt: 0 } });
+  if (conditions.length === 0) return null;
+
+  const filter = { $and: conditions };
 
   if (args.maxPrice !== undefined) {
     filter.price = { $lte: args.maxPrice };
   }
 
-  const products = await Product.find(filter)
+  return filter;
+}
+
+function getSearchTerms(query) {
+  return (query.match(/[\p{L}\p{N}]+(?:[.+#'-][\p{L}\p{N}]+)*/gu) ?? [])
+    .filter((term) => !ignoredSearchTerms.has(term.toLowerCase()));
+}
+
+export function prepareChatHistory(history) {
+  const mappedHistory = history
+    .filter(
+      (item) =>
+        item &&
+        ['user', 'assistant'].includes(item.role) &&
+        typeof item.content === 'string',
+    )
+    .slice(-config.maxHistoryMessages)
+    .map((item) => ({
+      role: item.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: item.content.slice(0, config.maxMessageLength) }],
+    }));
+  const firstUserMessage = mappedHistory.findIndex((item) => item.role === 'user');
+  return firstUserMessage === -1 ? [] : mappedHistory.slice(firstUserMessage);
+}
+
+async function searchProducts(args) {
+  const filter = buildProductSearchFilter(args);
+  const query = filter ?? {};
+
+  let productQuery = Product.find(query)
     .select('title price brand category stock images')
-    .limit(5)
-    .lean();
+    .limit(5);
+
+  if (args.inStockOnly && getSearchTerms(args.query).length === 0) {
+    productQuery = productQuery.sort({ stock: -1, title: 1 });
+  }
+
+  const products = await productQuery.lean();
 
   return products.map((product) => ({
     id: String(product._id),
@@ -61,16 +126,21 @@ async function searchProducts(args) {
 export async function postChatMessage(req, res) {
   const { message, history = [] } = req.body ?? {};
 
-  if (typeof message !== 'string' || !message.trim()) {
-    return res.status(400).json({ message: 'A message is required.' });
-  }
-
-  if (message.length > config.maxMessageLength) {
-    return res.status(400).json({ message: 'Your message is too long.' });
-  }
-
-  if (!Array.isArray(history)) {
-    return res.status(400).json({ message: 'Chat history must be an array.' });
+  if (/\b(in[\s-]+stock|available|availability|stock)\b/i.test(message)) {
+    try {
+      const products = await searchProducts({ query: message, inStockOnly: true });
+      return res.json({
+        reply: products.length
+          ? 'Here are the matching products currently in stock:'
+          : 'I could not find any matching products in stock. What would you like to try searching for instead?',
+        products,
+      });
+    } catch (error) {
+      console.error(`Chat inventory search failed (${error.name}): ${error.message}`);
+      return res.status(503).json({
+        message: 'Product availability is temporarily unavailable. Please try again shortly.',
+      });
+    }
   }
 
   if (!process.env.GEMINI_API_KEY) {
@@ -79,18 +149,7 @@ export async function postChatMessage(req, res) {
   }
 
   try {
-    const safeHistory = history
-      .filter(
-        (item) =>
-          item &&
-          ['user', 'assistant'].includes(item.role) &&
-          typeof item.content === 'string',
-      )
-      .slice(-config.maxHistoryMessages)
-      .map((item) => ({
-        role: item.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: item.content.slice(0, config.maxMessageLength) }],
-      }));
+    const safeHistory = prepareChatHistory(history);
 
     const contents = [
       ...safeHistory,

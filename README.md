@@ -48,7 +48,7 @@ notepad .env
 
 Set `MONGODB_URI` to your database connection string and `JWT_SECRET` to a long, random secret. Add `GEMINI_API_KEY` from Google AI Studio to enable the shopping assistant. Leave the Google OAuth values empty if you do not need Google sign-in. The `.env` file is for local use only and must never be committed.
 
-The chat endpoint uses the existing MongoDB database for its shared sliding-window rate limiter; no separate Redis or Upstash account is required. Chat requests are limited to 5 per 60 seconds per signed-in account or guest IP. The API's MongoDB user must be allowed to create the TTL index on the `chat_rate_limits` collection.
+The chat endpoint uses the existing MongoDB database for its shared sliding-window rate limiter; no separate Redis or Upstash account is required. Valid chat requests are limited to 5 per 60 seconds per signed-in account or guest IP; invalid payloads are rejected before consuming quota. The API's MongoDB user must be allowed to create the TTL index on the `chat_rate_limits` collection.
 
 ### 3. Start the backend
 

@@ -1,7 +1,7 @@
 {
   "model": "gemini-3.1-flash-lite",
   "temperature": 0.3,
-  "maxOutputTokens": 400,
+  "maxOutputTokens": 1024,
   "maxMessageLength": 2000,
   "maxHistoryMessages": 10,
   "rateLimit": {

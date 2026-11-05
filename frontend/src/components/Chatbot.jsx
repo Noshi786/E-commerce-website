@@ -63,7 +63,7 @@ function Chatbot() {
     setError('');
     setIsLoading(true);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), 65000);
 
     try {
       const response = await fetch('/api/chat', {
@@ -73,10 +73,14 @@ function Chatbot() {
         signal: controller.signal,
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Chat request failed.');
+        throw new Error(data?.message || 'Chat request failed.');
+      }
+
+      if (typeof data?.reply !== 'string') {
+        throw new Error('Chat service returned an invalid response. Please try again.');
       }
 
       setMessages((current) => [
@@ -88,6 +92,7 @@ function Chatbot() {
         },
       ]);
     } catch (requestError) {
+      setMessages((current) => current.slice(0, -1));
       setError(
         requestError.name === 'AbortError'
           ? 'The assistant is taking longer than expected. Please try again.'
@@ -232,7 +237,7 @@ function Chatbot() {
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#c98893] [animation-delay:-0.1s]" />
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#c98893]" />
                   </span>
-                Noshin. Curating something wonderful..
+                Noshin Curating something wonderful..
                 </div>
               </div>
             )}

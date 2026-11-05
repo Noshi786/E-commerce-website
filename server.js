@@ -21,7 +21,10 @@ dotenv.config();
 
 const app = express();
 
-app.set('trust proxy', process.env.VERCEL ? 1 : false);
+app.set(
+  'trust proxy',
+  process.env.VERCEL || process.env.NODE_ENV === 'production' ? 1 : false,
+);
 app.use(express.json());
 app.use(cors());
 app.use(passport.initialize());
