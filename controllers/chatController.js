@@ -5,6 +5,9 @@ import Product from '../models/Product.js';
 
 const ajv = new Ajv();
 const validateSearchArgs = ajv.compile(config.tool.parameters);
+const productEmbeddingCache = new Map();
+const embeddingBatchSize = 100;
+const maxCachedProductEmbeddings = 5000;
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const searchableFields = ['title', 'description', 'brand', 'category'];
@@ -81,6 +84,193 @@ function getSearchTerms(query) {
     .filter((term) => !ignoredSearchTerms.has(term.toLowerCase()));
 }
 
+function getEditDistance(left, right) {
+  const distances = Array.from(
+    { length: left.length + 1 },
+    () => Array(right.length + 1).fill(0),
+  );
+
+  for (let leftIndex = 0; leftIndex <= left.length; leftIndex += 1) {
+    distances[leftIndex][0] = leftIndex;
+  }
+  for (let rightIndex = 0; rightIndex <= right.length; rightIndex += 1) {
+    distances[0][rightIndex] = rightIndex;
+  }
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      distances[leftIndex][rightIndex] = Math.min(
+        distances[leftIndex][rightIndex - 1] + 1,
+        distances[leftIndex - 1][rightIndex] + 1,
+        distances[leftIndex - 1][rightIndex - 1] +
+          (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+      );
+
+      if (
+        leftIndex > 1 &&
+        rightIndex > 1 &&
+        left[leftIndex - 1] === right[rightIndex - 2] &&
+        left[leftIndex - 2] === right[rightIndex - 1]
+      ) {
+        distances[leftIndex][rightIndex] = Math.min(
+          distances[leftIndex][rightIndex],
+          distances[leftIndex - 2][rightIndex - 2] + 1,
+        );
+      }
+    }
+  }
+
+  return distances[left.length][right.length];
+}
+
+function getPhoneticKey(word) {
+  const normalized = word
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/qu/g, 'k')
+    .replace(/[cq]/g, 'k');
+
+  return normalized[0] + normalized.slice(1).replace(/[aeiou]/g, '');
+}
+
+export function getFuzzySearchScore(query, product) {
+  const terms = getSearchTerms(query).map((term) => term.toLowerCase());
+  if (!terms.length) return null;
+
+  const productWords = searchableFields.flatMap((field) =>
+    (product[field]?.match(/[\p{L}\p{N}]+(?:[.+#'-][\p{L}\p{N}]+)*/gu) ?? [])
+      .map((word) => word.toLowerCase()),
+  );
+  let score = 0;
+
+  for (const term of terms) {
+    const maxDistance = term.length >= 8 ? 2 : term.length >= 4 ? 1 : 0;
+    let bestDistance = Infinity;
+
+    for (const word of productWords) {
+      if (Math.abs(term.length - word.length) > maxDistance) continue;
+      bestDistance = Math.min(bestDistance, getEditDistance(term, word));
+
+      if (
+        term.length >= 5 &&
+        word.length >= 5 &&
+        getPhoneticKey(term) === getPhoneticKey(word)
+      ) {
+        bestDistance = Math.min(bestDistance, 1);
+      }
+    }
+
+    if (bestDistance > maxDistance) return null;
+    score += bestDistance;
+  }
+
+  return score;
+}
+
+export function getSemanticSearchResults(queryEmbedding, products, embeddings) {
+  const queryMagnitude = Math.sqrt(
+    queryEmbedding.reduce((sum, value) => sum + value * value, 0),
+  );
+  if (!queryMagnitude) return [];
+
+  return products
+    .map((product, index) => {
+      const embedding = embeddings[index];
+      if (!embedding || embedding.length !== queryEmbedding.length) {
+        return { product, similarity: 0 };
+      }
+
+      const productMagnitude = Math.sqrt(
+        embedding.reduce((sum, value) => sum + value * value, 0),
+      );
+      const dotProduct = queryEmbedding.reduce(
+        (sum, value, dimension) => sum + value * embedding[dimension],
+        0,
+      );
+
+      return {
+        product,
+        similarity: productMagnitude ? dotProduct / (queryMagnitude * productMagnitude) : 0,
+      };
+    })
+    .filter(({ similarity }) => similarity >= config.semanticSearchMinSimilarity)
+    .sort((left, right) => right.similarity - left.similarity)
+    .slice(0, 5)
+    .map(({ product }) => product);
+}
+
+function getProductEmbeddingText(product) {
+  return searchableFields
+    .map((field) => product[field])
+    .filter((value) => typeof value === 'string' && value.trim())
+    .join('. ')
+    .slice(0, 2000);
+}
+
+async function embedTexts(ai, texts) {
+  const embeddings = [];
+
+  for (let start = 0; start < texts.length; start += embeddingBatchSize) {
+    const batch = texts.slice(start, start + embeddingBatchSize);
+    const response = await ai.models.embedContent({
+      model: config.embeddingModel,
+      contents: batch,
+    });
+    const batchEmbeddings = response.embeddings?.map((embedding) => embedding.values);
+
+    if (
+      !batchEmbeddings ||
+      batchEmbeddings.length !== batch.length ||
+      batchEmbeddings.some(
+        (embedding) =>
+          !Array.isArray(embedding) ||
+          embedding.length === 0 ||
+          embedding.some((value) => !Number.isFinite(value)),
+      )
+    ) {
+      throw new Error('Gemini returned invalid product search embeddings.');
+    }
+
+    embeddings.push(...batchEmbeddings);
+  }
+
+  return embeddings;
+}
+
+async function searchProductsSemantically(args, products, ai) {
+  if (!ai) {
+    throw new Error('GEMINI_API_KEY is required for semantic product search.');
+  }
+
+  if (!products.length) return [];
+
+  const queryEmbeddings = await embedTexts(ai, [args.query]);
+  const uncachedProducts = [];
+  products.forEach((product) => {
+    const id = String(product._id);
+    const text = getProductEmbeddingText(product);
+    if (!text) return;
+    const cached = productEmbeddingCache.get(id);
+    if (cached?.text === text) return;
+
+    uncachedProducts.push({ id, text });
+  });
+
+  const newEmbeddings = await embedTexts(ai, uncachedProducts.map(({ text }) => text));
+  uncachedProducts.forEach(({ id, text }, index) => {
+    productEmbeddingCache.set(id, { text, embedding: newEmbeddings[index] });
+    if (productEmbeddingCache.size > maxCachedProductEmbeddings) {
+      productEmbeddingCache.delete(productEmbeddingCache.keys().next().value);
+    }
+  });
+
+  const embeddings = products.map(
+    (product) => productEmbeddingCache.get(String(product._id))?.embedding ?? [],
+  );
+
+  return getSemanticSearchResults(queryEmbeddings[0], products, embeddings);
+}
+
 export function prepareChatHistory(history) {
   const mappedHistory = history
     .filter(
@@ -98,23 +288,46 @@ export function prepareChatHistory(history) {
   return firstUserMessage === -1 ? [] : mappedHistory.slice(firstUserMessage);
 }
 
-async function searchProducts(args) {
+async function searchProducts(args, ai) {
   const filter = buildProductSearchFilter(args);
   const query = filter ?? {};
+  const projection = 'title description price brand category stock images';
 
   let productQuery = Product.find(query)
-    .select('title price brand category stock images')
+    .select(projection)
     .limit(5);
 
   if (args.inStockOnly && getSearchTerms(args.query).length === 0) {
     productQuery = productQuery.sort({ stock: -1, title: 1 });
   }
 
-  const products = await productQuery.lean();
+  let products = await productQuery.lean();
+
+  if (!products.length && getSearchTerms(args.query).length) {
+    const fallbackFilter = {};
+    if (args.inStockOnly) fallbackFilter.stock = { $gt: 0 };
+    if (args.maxPrice !== undefined) fallbackFilter.price = { $lte: args.maxPrice };
+
+    const candidates = await Product.find(fallbackFilter).select(projection).lean();
+    products = candidates
+      .map((product) => ({
+        product,
+        score: getFuzzySearchScore(args.query, product),
+      }))
+      .filter(({ score }) => score !== null)
+      .sort((left, right) => left.score - right.score)
+      .slice(0, 5)
+      .map(({ product }) => product);
+
+    if (!products.length) {
+      products = await searchProductsSemantically(args, candidates, ai);
+    }
+  }
 
   return products.map((product) => ({
     id: String(product._id),
     title: product.title,
+    description: product.description?.slice(0, 500) ?? '',
     price: product.price,
     brand: product.brand,
     category: product.category,
@@ -128,7 +341,13 @@ export async function postChatMessage(req, res) {
 
   if (/\b(in[\s-]+stock|available|availability|stock)\b/i.test(message)) {
     try {
-      const products = await searchProducts({ query: message, inStockOnly: true });
+      const ai = process.env.GEMINI_API_KEY
+        ? new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY,
+            httpOptions: { timeout: 20000, maxRetries: 0 },
+          })
+        : null;
+      const products = await searchProducts({ query: message, inStockOnly: true }, ai);
       return res.json({
         reply: products.length
           ? 'Here are the matching products currently in stock:'
@@ -209,7 +428,7 @@ export async function postChatMessage(req, res) {
           throw new Error('Gemini returned invalid product search arguments.');
         }
 
-        const products = await searchProducts(args);
+        const products = await searchProducts(args, ai);
         foundProducts.push(...products);
         functionResponses.push({
           functionResponse: {

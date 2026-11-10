@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildProductSearchFilter } from '../controllers/chatController.js';
+import {
+  buildProductSearchFilter,
+  getFuzzySearchScore,
+  getSemanticSearchResults,
+} from '../controllers/chatController.js';
 
 test('product search matches each query word across searchable fields', () => {
   const filter = buildProductSearchFilter({ query: 'new arrivals gift' });
@@ -60,5 +64,59 @@ test('natural-language filler does not prevent product search matches', () => {
   assert.deepEqual(
     filter.$and.map((condition) => condition.$or[0].title.source),
     ['new', 'arrivals'],
+  );
+});
+
+test('fuzzy product matching handles a misspelled product name', () => {
+  assert.equal(
+    getFuzzySearchScore('braclet', { title: 'Silver bracelet' }),
+    1,
+  );
+});
+
+test('fuzzy product matching handles phonetic spelling like moskra for mascara', () => {
+  assert.equal(getFuzzySearchScore('moskra', { title: 'Mascara' }), 1);
+});
+
+test('fuzzy product matching handles transposed letters and searchable fields', () => {
+  assert.equal(
+    getFuzzySearchScore('bleu scarf', {
+      title: 'Winter scarf',
+      category: 'Blue accessories',
+    }),
+    1,
+  );
+});
+
+test('fuzzy product matching rejects unrelated words and short typo terms', () => {
+  assert.equal(getFuzzySearchScore('shoe', { title: 'Silver bracelet' }), null);
+  assert.equal(getFuzzySearchScore('ca', { title: 'cat' }), null);
+});
+
+test('semantic product search ranks relevant products by cosine similarity', () => {
+  const products = [
+    { title: 'Somewhat related' },
+    { title: 'Best match' },
+    { title: 'Unrelated' },
+  ];
+
+  assert.deepEqual(
+    getSemanticSearchResults(
+      [1, 0],
+      products,
+      [
+        [0.8, 0.6],
+        [1, 0],
+        [0.1, 0.99],
+      ],
+    ),
+    [products[1], products[0]],
+  );
+});
+
+test('semantic product search returns no results for zero query vectors', () => {
+  assert.deepEqual(
+    getSemanticSearchResults([0, 0], [{ title: 'Product' }], [[1, 0]]),
+    [],
   );
 });
